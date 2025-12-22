@@ -1,0 +1,94 @@
+// Prisma schema for ShopMLOps e-commerce platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        Int        @id
+  parentId  Int?
+  name      String
+  slug      String     @unique
+  image     String
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+  createdAt DateTime   @default(now())
+}
+
+model Product {
+  id          Int      @id
+  categoryId  Int
+  name        String
+  description String
+  price       Float
+  image       String
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  inStock     Boolean  @default(true)
+  properties  String   // JSON string of raw properties
+  category    Category @relation(fields: [categoryId], references: [id])
+  events      Event[]
+  reviews     Review[]
+  createdAt   DateTime @default(now())
+
+  @@index([categoryId])
+}
+
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String?        @unique
+  name          String?
+  password      String?        // Hashed password
+  role          String         @default("USER") // 'USER', 'ADMIN', 'SELLER'
+  image         String?
+  events        Event[]
+  reviews       Review[]
+  sellerProfile SellerProfile?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model SellerProfile {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  storeName   String
+  description String?
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id            Int     @id @default(autoincrement())
+  timestamp     BigInt
+  visitorId     Int
+  eventType     String  // 'view', 'addtocart', 'transaction'
+  itemId        Int
+  transactionId String?
+  user          User    @relation(fields: [visitorId], references: [id])
+  product       Product @relation(fields: [itemId], references: [id])
+
+  @@index([visitorId])
+  @@index([itemId])
+  @@index([eventType])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  rating    Int
+  comment   String
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}

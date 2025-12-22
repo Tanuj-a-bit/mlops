@@ -1,0 +1,9 @@
+{
+  "source_directories": [
+    "Backend"
+  ],
+  "exclude": [
+    ".*/Frontend/.*",
+    ".*/node_modules/.*"
+  ]
+}
