@@ -1,0 +1,5 @@
+outs:
+- md5: dd30ed9a1212c5e4f09bae75b1b030c0
+  size: 511820
+  hash: md5
+  path: item_popularity.csv

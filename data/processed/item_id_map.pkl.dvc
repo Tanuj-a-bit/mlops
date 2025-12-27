@@ -1,0 +1,5 @@
+outs:
+- md5: d352a165df12a1d472da22c0a9c0d387
+  size: 1236256
+  hash: md5
+  path: item_id_map.pkl
