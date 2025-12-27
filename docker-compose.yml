@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    volumes:
+      - ./models:/app/models
+    ports:
+      - "8000:8000"
+      - "8081:8081"
+    environment:
+      - MODEL_PATH=models/als_model.pkl
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus

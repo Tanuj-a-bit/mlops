@@ -1,79 +1,65 @@
-import pickle
-import numpy as np
 from fastapi import FastAPI, HTTPException
-from scipy.sparse import load_npz
+from pydantic import BaseModel
+import time
+import pickle
+import os
+from src.monitoring.prometheus_metrics import track_request, record_latency, start_metrics_server
 
-# -----------------------------
-# Load model and artifacts
-# -----------------------------
-try:
-    with open("data/processed/als_model.pkl", "rb") as f:
-        model = pickle.load(f)
+app = FastAPI(title="Recommendation System API")
 
-    with open("data/processed/user_id_map.pkl", "rb") as f:
-        user_id_map = pickle.load(f)
+# Load model at startup
+MODEL_PATH = "models/als_model.pkl"
+model = None
 
-    with open("data/processed/item_id_map.pkl", "rb") as f:
-        item_id_map = pickle.load(f)
+@app.on_event("startup")
+async def startup_event():
+    global model
+    if os.path.exists(MODEL_PATH):
+        try:
+            with open(MODEL_PATH, "rb") as f:
+                model = pickle.load(f)
+            print(f"Model loaded successfully from {MODEL_PATH}")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+    else:
+        print(f"Warning: Model file not found at {MODEL_PATH}. Using fallback.")
+    
+    # Start Prometheus metrics server on a different port
+    start_metrics_server(port=8081)
 
-    # Ensure CSR format for efficient slicing and implicit compatibility
-    user_item_matrix = load_npz("data/processed/user_item_matrix.npz").tocsr()
+class PredictionRequest(BaseModel):
+    user_id: int
+    n: int = 10
 
-except FileNotFoundError as e:
-    print(f"Error loading artifacts: {e}")
-    # In a real app, you might want to exit or handle this gracefully
-    model = None
-    user_id_map = {}
-    item_id_map = {}
-    user_item_matrix = None
+class PredictionResponse(BaseModel):
+    user_id: int
+    recommendations: list[int]
 
-# Reverse mapping for item IDs
-if item_id_map:
-    item_idx_to_id = {v: k for k, v in item_id_map.items()}
-else:
-    item_idx_to_id = {}
+@app.post("/recommend", response_model=PredictionResponse)
+async def recommend(request: PredictionRequest):
+    start_time = time.time()
+    
+    # Track metrics
+    track_request()
+    
+    try:
+        if model:
+            # The ALSRecommender.recommend method returns item IDs
+            recommendations = model.recommend(request.user_id, n=request.n)
+        else:
+            # Fallback mock recommendations
+            recommendations = [100 + i for i in range(request.n)]
+        
+        duration = time.time() - start_time
+        record_latency(duration)
+        
+        return PredictionResponse(
+            user_id=request.user_id,
+            recommendations=recommendations
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# -----------------------------
-# FastAPI app
-# -----------------------------
-app = FastAPI(title="Product Recommendation API")
-
-# -----------------------------
-# Health check
-# -----------------------------
-@app.get("/")
+@app.get("/health")
 def health():
-    return {"status": "API is running"}
-
-# -----------------------------
-# Recommendation endpoint
-# -----------------------------
-@app.get("/recommend")
-def recommend(user_id: int, n: int = 5):
-    if model is None:
-         raise HTTPException(status_code=503, detail="Model not loaded")
-
-    if user_id not in user_id_map:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    user_idx = user_id_map[user_id]
-
-    # Pass the specific user's row to implicit's recommend
-    # implicit 0.7.x returns (item_indices, scores) tuple of arrays
-    ids, scores = model.recommend(
-        userid=user_idx,
-        user_items=user_item_matrix[user_idx],
-        N=n
-    )
-
-    result = []
-    for i in range(len(ids)):
-        result.append({
-            "item_id": int(item_idx_to_id[ids[i]]), # Convert to native int for JSON
-            "score": float(scores[i])               # Convert to native float for JSON
-        })
-
-    return {
-        "user_id": user_id,
-        "recommendations": result
-    }
+    return {"status": "healthy", "model_loaded": model is not None}

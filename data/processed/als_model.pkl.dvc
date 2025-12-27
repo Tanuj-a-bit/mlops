@@ -1,5 +1,0 @@
-outs:
-- md5: 0a5fa87758f696367a50f6b09f8c66fd
-  size: 19122932
-  hash: md5
-  path: als_model.pkl

@@ -1,0 +1,12 @@
+.git
+.dvc
+.venv
+__pycache__
+*.pyc
+data/raw
+data/processed
+models/*.pkl
+monitoring/evidently_reports
+wandb
+.wandb_config
+.DS_Store

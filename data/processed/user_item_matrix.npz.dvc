@@ -1,5 +1,0 @@
-outs:
-- md5: 1a5b4c48256e12ff08589fdef2f47d42
-  size: 1172904
-  hash: md5
-  path: user_item_matrix.npz

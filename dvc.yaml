@@ -1,0 +1,18 @@
+stages:
+  preprocess:
+    cmd: uv run python -m src.data.preprocessor
+    deps:
+    - data/raw/events.csv
+    - src/data/preprocessor.py
+    outs:
+    - data/processed/interactions.parquet:
+        persist: true
+        cache: true
+  train:
+    cmd: uv run python -m src.training.trainer
+    deps:
+    - data/processed/interactions.parquet
+    - src/training/trainer.py
+    - src/models/collaborative_filtering.py
+    outs:
+    - models/als_model.pkl

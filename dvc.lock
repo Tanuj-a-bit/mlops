@@ -1,0 +1,38 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: uv run python -m src.data.preprocessor
+    deps:
+    - path: data/raw/events.csv
+      hash: md5
+      md5: fddaf7c1c6a9df23a726500a08ffdd7e
+      size: 94237913
+    - path: src/data/preprocessor.py
+      hash: md5
+      md5: 1355658829509489250b68fa3f4d57e9
+      size: 2352
+    outs:
+    - path: data/processed/interactions.parquet
+      hash: md5
+      md5: 5a88394a063f1db3c27ea50f63430b62
+      size: 1510349
+  train:
+    cmd: uv run python -m src.training.trainer
+    deps:
+    - path: data/processed/interactions.parquet
+      hash: md5
+      md5: 5a88394a063f1db3c27ea50f63430b62
+      size: 1510349
+    - path: src/models/collaborative_filtering.py
+      hash: md5
+      md5: 901beb0d2c165e23d244dd07cc9561db
+      size: 2917
+    - path: src/training/trainer.py
+      hash: md5
+      md5: 23410773d929a81952f688e063acd39a
+      size: 2525
+    outs:
+    - path: models/als_model.pkl
+      hash: md5
+      md5: 3d71aeb26333475ba4367f0aee26fcf3
+      size: 40901175
