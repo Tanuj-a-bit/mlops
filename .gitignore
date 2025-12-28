@@ -35,15 +35,20 @@ yarn-error.log*
 out/
 build/
 
-# DVC
-.dvc/cache/
-.dvc/tmp/
-/data/raw/*
-!/data/raw/.gitkeep
-/data/processed/*
-!/data/processed/.gitkeep
-/models/*
-!/models/.gitkeep
+# DVC & ML Artifacts
+**/.dvc/cache/
+**/.dvc/tmp/
+/ml/data/raw/*
+!/ml/data/raw/.gitkeep
+/ml/data/processed/*
+!/ml/data/processed/.gitkeep
+/ml/models/*
+!/ml/models/.gitkeep
+/ml/mlruns/
+/ml/mlflow.db
+/ml/wandb/
+/ml/.wandb_config/
+/ml/.pytest_cache/
 
 # OS
 .DS_Store
