@@ -37,3 +37,8 @@
 ## Limitations
 - Performance depends on the density of the interaction matrix.
 - Does not use item content (properties); purely interaction-based.
+## Monitoring
+- **Infrastructure:** Prometheus (Port 8081) & Grafana Dashboard.
+- **Metrics Tracked:** Request counts, latency histograms, error rates, and business metrics (CTR, Conversions via feedback loop).
+- **Drift Detection:** Data drift analysis integrated via `ml/main.py drift` using Evidently AI.
+- **Experiment Tracking:** MLflow (experiment: `als-recommendation`) and WandB (project: `recommendation-mlops-als`).

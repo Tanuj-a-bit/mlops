@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ../Dataset:/Dataset
+    environment:
+      - DATASET_DIR=/Dataset
+      - PYTHONUNBUFFERED=1
+      - SQLALCHEMY_DATABASE_URI=postgresql://postgres:Tanuj%4026@host.docker.internal:5433/postgres
+      - MONGODB_URL=mongodb://mongodb:27017
+      - REDIS_HOST=redis
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+    depends_on:
+      - mongodb
+      - redis
+      - elasticsearch
+
+  mongodb:
+    image: mongo:6.0
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+
+volumes:
+  mongodb_data:
+  redis_data:
+  elasticsearch_data:

@@ -40,3 +40,7 @@ The dataset consists of three main files:
 - **Bias:** The data reflects historical user behavior which may contain "popularity bias".
 - **Intended Use:** Research and educational purposes for building recommendation systems.
 - **Version Control:** Managed via DVC (Data Version Control). Pipeline tracked in `dvc.yaml`.
+## Monitoring
+- **Drift Detection:** Data drift is monitored using Evidently AI as part of the production pipeline.
+- **Reporting:** Automatic drift reports are generated to track shifts in user behavior (e.g., changes in `visitorid` distribution or `itemid` popularity) and data quality (e.g., null rate shifts).
+- **Execution:** Triggered via `python ml/main.py drift`.

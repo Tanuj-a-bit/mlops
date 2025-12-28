@@ -4,10 +4,18 @@ global:
 
 scrape_configs:
   - job_name: 'recommendation-api'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
     static_configs:
       - targets: ['localhost:8081']
         labels:
+          model: 'als'
           service: 'recommendation-system'
-          environment: 'production'
-    metrics_path: '/metrics'
-    scrape_interval: 10s
+      - targets: ['localhost:8082']
+        labels:
+          model: 'bpr'
+          service: 'recommendation-system'
+      - targets: ['localhost:8083']
+        labels:
+          model: 'lmf'
+          service: 'recommendation-system'

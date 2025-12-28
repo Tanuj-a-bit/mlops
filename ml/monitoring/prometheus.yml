@@ -4,4 +4,4 @@ global:
 scrape_configs:
   - job_name: 'recommendation-api'
     static_configs:
-      - targets: ['app:8081'] # 'app' is the service name in docker-compose
+      - targets: ['host.docker.internal:8082', 'host.docker.internal:8080'] # Metrics from local ML service AND backend API

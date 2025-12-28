@@ -11,7 +11,17 @@ from src.monitoring.prometheus_metrics import (
     start_metrics_server
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="LMF Recommendation Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 MODEL_PATH = "models/lmf_model.pkl"
 model = None

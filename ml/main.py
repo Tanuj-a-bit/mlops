@@ -3,9 +3,14 @@ import sys
 import os
 import subprocess
 
+from dotenv import load_dotenv
+
 # Determine the base 'ml' directory (where this script resides)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
+
+# Load environment variables from .env
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 def main():
     parser = argparse.ArgumentParser(description="Recommendation System ML Registry & Pipeline")
@@ -32,6 +37,10 @@ def main():
 
     # Comparison subparser
     compare_parser = subparsers.add_parser("compare", help="Compare all models")
+
+    # Drift subparser
+    drift_parser = subparsers.add_parser("drift", help="Run data drift analysis")
+    drift_parser.add_argument("--model", choices=["als", "bpr", "lmf"], default="als", help="Model to analyze")
 
     args = parser.parse_args()
 
@@ -64,6 +73,10 @@ def main():
 
     elif args.command == "compare":
         subprocess.run(["python", "compare_models.py"], cwd=BASE_DIR)
+
+    elif args.command == "drift":
+        print(f"\n>>> Running Drift Analysis for {args.model.upper()}...")
+        subprocess.run(["python", "src/monitoring/drift_detector.py"], cwd=BASE_DIR)
 
     else:
         parser.print_help()

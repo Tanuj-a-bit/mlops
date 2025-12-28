@@ -29,3 +29,8 @@
 
 ## Limitations
 - Sensitive to the choice of `learning_rate` and `regularization`.
+## Monitoring
+- **Infrastructure:** Prometheus (Port 8083) & Grafana Dashboard.
+- **Metrics Tracked:** Request counts, latency histograms, error rates, and business metrics.
+- **Drift Detection:** Data drift analysis integrated via `ml/main.py drift` using Evidently AI.
+- **Experiment Tracking:** MLflow (experiment: `lmf-recommendation`) and WandB (project: `recommendation-mlops-lmf`).

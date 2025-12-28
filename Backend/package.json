@@ -1,0 +1,32 @@
+{
+    "name": "shopmlops-backend",
+    "version": "1.0.0",
+    "description": "Backend for ShopMLOps with Prisma and SQLite",
+    "main": "index.js",
+    "scripts": {
+        "seed": "tsx prisma/seed.ts",
+        "db:push": "prisma db push",
+        "db:studio": "prisma studio",
+        "db:generate": "prisma generate"
+    },
+    "keywords": [
+        "ecommerce",
+        "mlops",
+        "prisma",
+        "sqlite"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@prisma/client": "^5.22.0",
+        "@types/bcryptjs": "^2.4.6",
+        "bcryptjs": "^3.0.3",
+        "csv-parser": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.2",
+        "prisma": "^5.22.0",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2"
+    }
+}

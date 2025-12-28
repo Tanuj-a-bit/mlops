@@ -33,3 +33,8 @@
 ## Limitations
 - Training time is longer than ALS as it uses Stochastic Gradient Descent.
 - Does not explicitly utilize the magnitude of interaction weights.
+## Monitoring
+- **Infrastructure:** Prometheus (Port 8082) & Grafana Dashboard.
+- **Metrics Tracked:** Request counts, latency histograms, error rates, and business metrics (CTR, Conversions via feedback loop).
+- **Drift Detection:** Data drift analysis integrated via `ml/main.py drift` using Evidently AI.
+- **Experiment Tracking:** MLflow (experiment: `bpr-recommendation`) and WandB (project: `recommendation-mlops-bpr`).

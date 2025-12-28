@@ -15,6 +15,23 @@ class DataLoader:
 
     def load_events(self):
         """Load transaction and behavior events."""
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            from sqlalchemy import create_engine
+            print("Loading events from database...")
+            engine = create_engine(db_url)
+            # Match schema: timestamp, visitorid, event, itemid, transactionid
+            query = """
+                SELECT 
+                    timestamp, 
+                    "visitorId" as visitorid, 
+                    "eventType" as event, 
+                    "itemId" as itemid, 
+                    "transactionId" as transactionid 
+                FROM "Event"
+            """
+            return pd.read_sql(query, engine)
+        
         path = os.path.join(self.data_dir, "events.csv")
         return pd.read_csv(path)
 

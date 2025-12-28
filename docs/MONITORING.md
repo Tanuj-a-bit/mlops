@@ -1,334 +1,464 @@
-# Comprehensive MLOps Monitoring Setup
+# Monitoring and Observability Guide
 
-This document describes the complete monitoring infrastructure for the recommendation system, covering all metrics categories.
-
-## 📊 Metrics Overview
-
-### 1. **Offline Evaluation Metrics** (Model Quality)
-
-These metrics are computed during model training and evaluation:
-
-| Metric | Description | Current Value | Target |
-|--------|-------------|---------------|--------|
-| **Precision@10** | Fraction of recommended items that are relevant | 0.2838 | > 0.25 |
-| **Recall@10** | Fraction of relevant items that are recommended | 0.3609 | > 0.30 |
-| **F1@10** | Harmonic mean of Precision and Recall | 0.2737 | > 0.25 |
-| **NDCG@10** | Ranking quality (position-aware) | 0.4637 | > 0.40 |
-| **MAP** | Mean Average Precision | 0.3288 | > 0.30 |
-| **Hit Rate@10** | % of users with at least 1 relevant item | 0.9452 | > 0.85 |
-| **MRR** | Mean Reciprocal Rank | 0.7681 | > 0.65 |
-
-**Tracked in:** MLflow, WandB  
-**Location:** `src/evaluation/metrics.py`
+## Overview
+This guide covers the monitoring, logging, and observability setup for the E-commerce Recommendation MLOps system.
 
 ---
 
-### 2. **Business Metrics** (User Engagement)
+## Metrics Collection
 
-Real-time metrics tracked via Prometheus:
+### Prometheus Setup
 
-| Metric | Description | Tracking Method |
-|--------|-------------|-----------------|
-| **CTR** | Click-Through Rate: clicks / impressions | Gauge |
-| **Conversion Rate** | Conversions / total recommendations | Gauge |
-| **Dwell Time** | Time spent on recommended items | Summary (histogram) |
-| **Bounce Rate** | % of users who leave immediately | Gauge |
-| **Add-to-Cart Rate** | % of recommendations added to cart | Gauge |
+#### Configuration
+Location: `ml/monitoring/prometheus.yml`
 
-**Tracked in:** Prometheus (via `/feedback` endpoint)  
-**Location:** `src/monitoring/prometheus_metrics.py`, `src/serving/app.py`
+```yaml
+global:
+  scrape_interval: 15s
 
----
-
-### 3. **System Performance Metrics**
-
-| Metric | Description | Type |
-|--------|-------------|------|
-| **Inference Latency (p95/p99)** | 95th/99th percentile response time | Histogram |
-| **Requests per Second (RPS)** | Throughput of recommendation API | Counter (rate) |
-| **Error Rate** | Failed requests / total requests | Counter (rate) |
-| **Timeout Rate** | Requests exceeding 500ms | Counter |
-
-**Tracked in:** Prometheus  
-**Endpoint:** `http://localhost:8081/metrics`
-
----
-
-### 4. **Data Quality & Drift Metrics**
-
-Monitored using Evidently AI:
-
-| Metric | Description | Detection Method |
-|--------|-------------|------------------|
-| **Feature Mean/Std Shift** | Changes in feature distributions | Statistical tests |
-| **PSI** (Population Stability Index) | Overall distribution drift | PSI calculation |
-| **KS Statistic** | Kolmogorov-Smirnov test for drift | Two-sample KS test |
-| **Null/Missing Rate** | % of missing values per feature | Data quality checks |
-| **Out-of-Range Values** | Values outside expected bounds | Range validation |
-
-**Tracked in:** Evidently AI Reports  
-**Location:** `src/monitoring/drift_detector.py`  
-**Reports:** `monitoring/evidently_reports/drift_report.html`
-
----
-
-## 🛠️ Monitoring Stack
-
-### **MLflow** (Experiment Tracking)
-- **Purpose:** Track model training runs, hyperparameters, and offline metrics
-- **Integration:** `src/training/trainer.py`
-- **Access:** Run `mlflow ui` and visit `http://localhost:5000`
-
-### **Prometheus** (Metrics Collection)
-- **Purpose:** Scrape and store time-series metrics from the API
-- **Config:** `monitoring/prometheus/prometheus.yml`
-- **Metrics Endpoint:** `http://localhost:8081/metrics`
-- **Run:** `docker-compose up prometheus`
-
-### **Grafana** (Visualization)
-- **Purpose:** Create dashboards for real-time monitoring
-- **Dashboard:** `monitoring/grafana/dashboards/recommendation_system.json`
-- **Access:** `http://localhost:3000` (default: admin/admin)
-- **Run:** `docker-compose up grafana`
-
-### **Evidently AI** (Drift Detection)
-- **Purpose:** Monitor data quality and model drift
-- **Reports:** HTML reports with interactive visualizations
-- **Run:** `uv run python src/monitoring/drift_detector.py`
-
----
-
-## 🚀 Quick Start
-
-### 1. Start the Monitoring Stack
-
-```bash
-# Start Prometheus and Grafana
-docker-compose up -d prometheus grafana
-
-# Verify Prometheus is scraping
-curl http://localhost:9090/api/v1/targets
-
-# Access Grafana
-open http://localhost:3000
+scrape_configs:
+  - job_name: 'recommendation-api'
+    static_configs:
+      - targets: ['host.docker.internal:8082', 'host.docker.internal:8080']
 ```
 
-### 2. Start the Recommendation API
-
+#### Starting Prometheus
 ```bash
-# Start FastAPI server with Prometheus metrics
-uv run uvicorn src.serving.app:app --host 0.0.0.0 --port 8000
+cd ml
+docker-compose up -d prometheus
 
-# Metrics endpoint
-curl http://localhost:8081/metrics
+# Access UI
+open http://localhost:9090
 ```
 
-### 3. Send Test Requests
+### Available Metrics
 
-```bash
-# Get recommendations
-curl -X POST http://localhost:8000/recommend \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 12345, "n": 10}'
+#### System Metrics
 
-# Send feedback (for business metrics)
-curl -X POST http://localhost:8000/feedback \
-  -H "Content-Type: application/json" \
-  -d '{"event_type": "click", "user_id": 12345, "item_id": 67890}'
-```
-
-### 4. Generate Drift Reports
-
-```bash
-# Run drift detection
-uv run python src/monitoring/drift_detector.py
-
-# View report
-open monitoring/evidently_reports/drift_report.html
-```
-
----
-
-## 📈 Grafana Dashboard Panels
-
-The dashboard (`recommendation_system.json`) includes:
-
-### **System Performance**
-- Request Rate (RPS)
-- Latency (p95/p99)
-- Error & Timeout Rate
-
-### **Business Metrics**
-- CTR, Conversion Rate, Add-to-Cart Rate, Bounce Rate (gauges)
-- User Actions Over Time (clicks, impressions, conversions)
-- Dwell Time Distribution
-
-### **Model Quality**
-- Precision@10, Recall@10, F1@10
-- NDCG@10, MAP, MRR
-
----
-
-## 🔍 Prometheus Queries
-
-### System Metrics
+**Request Count**
 ```promql
-# Request rate (last 5 minutes)
-rate(rec_request_count_total[5m])
+rec_request_count
+```
+- Total number of recommendation requests
+- Type: Counter
+- Use: Track API usage and traffic patterns
 
-# p95 latency
+**Latency**
+```promql
+rec_latency_seconds
+```
+- Time spent processing requests
+- Type: Histogram
+- Buckets: 5ms, 10ms, 25ms, 50ms, 75ms, 100ms, 250ms, 500ms, 750ms, 1s, 2.5s, 5s, 7.5s, 10s
+- Use: Monitor performance and identify slow requests
+
+**Error Count**
+```promql
+rec_error_count
+```
+- Total number of errors
+- Type: Counter
+- Use: Track system reliability
+
+#### Quality Metrics
+
+**Empty Response Count**
+```promql
+rec_empty_response_count
+```
+- Times when no recommendations were found
+- Type: Counter
+- Use: Monitor recommendation coverage
+
+**Items Returned**
+```promql
+rec_items_returned_count
+```
+- Distribution of recommendation list sizes
+- Type: Histogram
+- Buckets: 0, 1, 5, 10, 20, 50, 100
+- Use: Understand recommendation diversity
+
+**Recommendation Type**
+```promql
+rec_type_count{type="user_personalized"}
+rec_type_count{type="item_similar"}
+```
+- Breakdown by recommendation strategy
+- Type: Counter with labels
+- Use: Understand which strategies are used most
+
+### Useful Queries
+
+#### Request Rate (per second)
+```promql
+rate(rec_request_count[5m])
+```
+
+#### 95th Percentile Latency
+```promql
 histogram_quantile(0.95, rate(rec_latency_seconds_bucket[5m]))
-
-# Error rate
-rate(rec_error_count_total[5m]) / rate(rec_request_count_total[5m])
 ```
 
-### Business Metrics
+#### Error Rate
 ```promql
-# CTR
-rec_ctr
+rate(rec_error_count[5m]) / rate(rec_request_count[5m])
+```
 
-# Click rate
-rate(rec_clicks_total[5m])
+#### Average Items Returned
+```promql
+rate(rec_items_returned_count_sum[5m]) / rate(rec_items_returned_count_count[5m])
+```
 
-# Conversion rate
-rate(rec_conversions_total[5m]) / rate(rec_impressions_total[5m])
+#### Empty Response Rate
+```promql
+rate(rec_empty_response_count[5m]) / rate(rec_request_count[5m])
 ```
 
 ---
 
-## 📝 Logging Metrics
+## Grafana Dashboards
 
-### From Training Pipeline
-```python
-import mlflow
+### Setup
 
-with mlflow.start_run():
-    mlflow.log_params(config)
-    mlflow.log_metrics({
-        "precision@10": 0.2838,
-        "recall@10": 0.3609,
-        "ndcg@10": 0.4637
-    })
-    mlflow.log_artifact("models/als_model.pkl")
+#### Starting Grafana
+```bash
+cd ml
+docker-compose up -d grafana
+
+# Access UI (default: admin/admin)
+open http://localhost:3001
 ```
 
-### From API (Prometheus)
-```python
-from src.monitoring.prometheus_metrics import (
-    track_request, record_latency, record_feedback
-)
+#### Adding Prometheus Data Source
+1. Navigate to Configuration → Data Sources
+2. Click "Add data source"
+3. Select "Prometheus"
+4. URL: `http://prometheus:9090`
+5. Click "Save & Test"
 
-# Track request
-track_request()
-record_latency(duration)
+### Dashboard Panels
 
-# Track business event
-record_feedback("click")
-record_feedback("conversion")
-record_feedback("dwell_time", value=45.2)
+#### 1. Request Rate Panel
+- **Type:** Graph
+- **Query:** `rate(rec_request_count[5m])`
+- **Title:** "Recommendation Requests per Second"
+- **Y-axis:** requests/sec
+
+#### 2. Latency Panel
+- **Type:** Graph
+- **Queries:**
+  - P50: `histogram_quantile(0.50, rate(rec_latency_seconds_bucket[5m]))`
+  - P95: `histogram_quantile(0.95, rate(rec_latency_seconds_bucket[5m]))`
+  - P99: `histogram_quantile(0.99, rate(rec_latency_seconds_bucket[5m]))`
+- **Title:** "Response Latency"
+- **Y-axis:** seconds
+
+#### 3. Error Rate Panel
+- **Type:** Graph
+- **Query:** `rate(rec_error_count[5m]) / rate(rec_request_count[5m]) * 100`
+- **Title:** "Error Rate"
+- **Y-axis:** percentage
+- **Alert:** > 5%
+
+#### 4. Recommendation Type Distribution
+- **Type:** Pie Chart
+- **Queries:**
+  - User: `rec_type_count{type="user_personalized"}`
+  - Item: `rec_type_count{type="item_similar"}`
+- **Title:** "Recommendation Strategy Distribution"
+
+#### 5. Empty Response Rate
+- **Type:** Gauge
+- **Query:** `rate(rec_empty_response_count[5m]) / rate(rec_request_count[5m]) * 100`
+- **Title:** "Empty Response Rate"
+- **Thresholds:** 
+  - Green: < 10%
+  - Yellow: 10-20%
+  - Red: > 20%
+
+#### 6. Items Returned Distribution
+- **Type:** Heatmap
+- **Query:** `rate(rec_items_returned_count_bucket[5m])`
+- **Title:** "Recommendation List Size Distribution"
+
+### Importing Dashboards
+```bash
+# Dashboard JSON files location
+ls ml/monitoring/grafana/dashboards/
+
+# Import via UI
+# 1. Click "+" → Import
+# 2. Upload JSON file or paste JSON
+# 3. Select Prometheus data source
+# 4. Click "Import"
 ```
 
 ---
 
-## 🎯 Alerting Rules (Prometheus)
+## Data Drift Detection
 
-Create `monitoring/prometheus/alerts.yml`:
+### Evidently AI Setup
+
+#### Running Drift Analysis
+```bash
+cd ml
+python main.py drift --model bpr
+```
+
+#### Output
+- **Report Location:** `ml/monitoring/evidently_reports/drift_report.html`
+- **Metrics Tracked:**
+  - Feature distribution changes
+  - Data quality metrics
+  - Model performance degradation
+
+#### Opening Report
+```bash
+# macOS
+open ml/monitoring/evidently_reports/drift_report.html
+
+# Linux
+xdg-open ml/monitoring/evidently_reports/drift_report.html
+```
+
+### Drift Metrics
+
+#### Data Drift
+- **User ID Distribution:** Changes in user activity patterns
+- **Item ID Distribution:** Changes in product popularity
+- **Event Type Distribution:** Changes in user behavior (view/cart/purchase)
+- **Timestamp Distribution:** Temporal patterns
+
+#### Data Quality
+- **Missing Values:** Null rate changes
+- **Duplicates:** Duplicate record detection
+- **Outliers:** Anomalous values
+
+### Automated Drift Detection
+```bash
+# Add to cron for daily checks
+0 2 * * * cd /path/to/ml && python main.py drift --model bpr
+```
+
+---
+
+## Alerting
+
+### Prometheus Alerting Rules
+
+#### Configuration
+Create `ml/monitoring/alert_rules.yml`:
 
 ```yaml
 groups:
-  - name: recommendation_system
+  - name: recommendation_alerts
+    interval: 30s
     rules:
-      - alert: HighLatency
-        expr: histogram_quantile(0.95, rate(rec_latency_seconds_bucket[5m])) > 0.5
-        for: 5m
-        annotations:
-          summary: "High p95 latency detected"
-      
       - alert: HighErrorRate
-        expr: rate(rec_error_count_total[5m]) / rate(rec_request_count_total[5m]) > 0.05
+        expr: rate(rec_error_count[5m]) / rate(rec_request_count[5m]) > 0.05
         for: 5m
+        labels:
+          severity: critical
         annotations:
-          summary: "Error rate above 5%"
-      
-      - alert: LowCTR
-        expr: rec_ctr < 0.05
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }}%"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(rec_latency_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected"
+          description: "P95 latency is {{ $value }}s"
+
+      - alert: HighEmptyResponseRate
+        expr: rate(rec_empty_response_count[5m]) / rate(rec_request_count[5m]) > 0.2
         for: 10m
+        labels:
+          severity: warning
         annotations:
-          summary: "CTR dropped below 5%"
+          summary: "High empty response rate"
+          description: "{{ $value }}% of requests return no recommendations"
+
+      - alert: ServiceDown
+        expr: up{job="recommendation-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Recommendation service is down"
 ```
 
----
+### Grafana Alerts
 
-## 📊 Evidently Drift Report Contents
+#### Setting Up Alerts
+1. Edit dashboard panel
+2. Click "Alert" tab
+3. Configure conditions
+4. Add notification channel
 
-The HTML report includes:
-
-1. **Data Drift Summary**
-   - Number of drifted columns
-   - Drift detection method (KS test, PSI)
-   - Drift score per feature
-
-2. **Data Quality**
-   - Missing values count
-   - Feature statistics (mean, std, min, max)
-   - Correlation changes
-
-3. **Feature-Level Analysis**
-   - Distribution plots (reference vs current)
-   - Statistical test results
-   - Drift scores
+#### Example Alert: High Error Rate
+- **Condition:** `WHEN avg() OF query(A, 5m, now) IS ABOVE 5`
+- **Frequency:** Evaluate every 1m
+- **For:** 5m
+- **Notification:** Email, Slack, PagerDuty
 
 ---
 
-## 🔄 Continuous Monitoring Workflow
+## Logging
 
-```mermaid
-graph LR
-    A[User Request] --> B[FastAPI App]
-    B --> C[Prometheus Metrics]
-    B --> D[Model Inference]
-    D --> E[Response]
-    E --> F[User Feedback]
-    F --> C
-    C --> G[Prometheus Server]
-    G --> H[Grafana Dashboard]
-    I[Scheduled Job] --> J[Drift Detector]
-    J --> K[Evidently Report]
+### Application Logs
+
+#### Backend (FastAPI)
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+logger.info("Recommendation request received", extra={"user_id": user_id})
 ```
 
----
+#### ML Service
+```python
+import logging
 
-## 📦 Dependencies
-
-All monitoring tools are included in `pyproject.toml`:
-
-```toml
-[project]
-dependencies = [
-    "mlflow>=2.9.0",
-    "prometheus-client>=0.19.0",
-    "evidently>=0.7.0",
-    "wandb>=0.16.0",
-]
+logger = logging.getLogger(__name__)
+logger.info(f"Model loaded: {model_path}")
+logger.warning(f"Slow prediction: {latency}s")
+logger.error(f"Prediction failed: {error}")
 ```
 
+### Centralized Logging (Planned)
+
+#### ELK Stack
+- **Elasticsearch:** Log storage and search
+- **Logstash:** Log aggregation and processing
+- **Kibana:** Log visualization
+
+#### Loki + Grafana
+- **Loki:** Log aggregation
+- **Promtail:** Log shipping
+- **Grafana:** Unified metrics and logs
+
 ---
 
-## 🎓 Best Practices
+## Performance Monitoring
 
-1. **Set up alerts** for critical metrics (latency, error rate, CTR)
-2. **Run drift detection** daily or weekly
-3. **Review Grafana dashboards** regularly
-4. **Track model versions** in MLflow
-5. **A/B test** new models before full deployment
-6. **Monitor business impact** alongside technical metrics
+### Key Performance Indicators (KPIs)
+
+#### System KPIs
+- **Availability:** > 99.9%
+- **Request Rate:** Track trends
+- **Error Rate:** < 1%
+- **P95 Latency:** < 500ms
+- **P99 Latency:** < 1s
+
+#### Business KPIs
+- **Recommendation Coverage:** > 95%
+- **Average Items Returned:** 5-10
+- **User Personalization Rate:** > 80%
+- **Click-Through Rate:** Track trends
+- **Conversion Rate:** Track trends
+
+### Monitoring Checklist
+
+#### Daily
+- [ ] Check error rate
+- [ ] Review latency trends
+- [ ] Verify all services are up
+- [ ] Check empty response rate
+
+#### Weekly
+- [ ] Review performance trends
+- [ ] Analyze slow queries
+- [ ] Check resource utilization
+- [ ] Review alert history
+
+#### Monthly
+- [ ] Run drift detection
+- [ ] Review KPI trends
+- [ ] Optimize slow endpoints
+- [ ] Update dashboards
 
 ---
 
-## 📚 References
+## Troubleshooting
 
+### High Latency
+1. Check Prometheus latency metrics
+2. Identify slow endpoints
+3. Review database query performance
+4. Check model loading time
+5. Verify network connectivity
+
+### High Error Rate
+1. Check error logs
+2. Identify error patterns
+3. Review recent deployments
+4. Check database connectivity
+5. Verify model availability
+
+### Empty Recommendations
+1. Check user history
+2. Verify model is loaded
+3. Review recommendation logic
+4. Check data quality
+5. Analyze drift reports
+
+### Service Down
+1. Check service logs
+2. Verify container/process status
+3. Check resource availability (CPU, memory)
+4. Review recent changes
+5. Restart service if needed
+
+---
+
+## Best Practices
+
+### Metrics
+- Use consistent naming conventions
+- Add meaningful labels
+- Set appropriate bucket sizes for histograms
+- Document all custom metrics
+
+### Dashboards
+- Group related metrics
+- Use consistent time ranges
+- Add descriptions to panels
+- Set up drill-down capabilities
+
+### Alerts
+- Avoid alert fatigue
+- Set appropriate thresholds
+- Include actionable information
+- Test alerts regularly
+
+### Logging
+- Use structured logging
+- Include context (user_id, request_id)
+- Set appropriate log levels
+- Rotate logs regularly
+
+---
+
+## Resources
+
+### Documentation
 - [Prometheus Documentation](https://prometheus.io/docs/)
-- [Grafana Dashboards](https://grafana.com/docs/grafana/latest/dashboards/)
-- [Evidently AI](https://docs.evidentlyai.com/)
-- [MLflow Tracking](https://mlflow.org/docs/latest/tracking.html)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Evidently AI Documentation](https://docs.evidentlyai.com/)
+
+### Dashboards
+- Location: `ml/monitoring/grafana/dashboards/`
+- Import via Grafana UI
+
+### Metrics Endpoint
+- Backend: `http://localhost:8080/metrics`
+- ML Service: `http://localhost:8082/metrics`
